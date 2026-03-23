@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
         await handleStudents(chatId)
         break
 
+      case '/addstudent':
+        await handleAddStudent(chatId, text)
+        break
+
       case '/deploy':
         await handleDeploy(chatId)
         break
@@ -104,6 +108,92 @@ async function handleStudents(chatId: number) {
   )
 }
 
+// ─── /addstudent ─────────────────────────────────────────────────────────────
+// Usage: /addstudent <name> <email> <level>
+// Level accepts short codes (A1, A2, B1, B2, C1) or full names
+
+const LEVEL_MAP: Record<string, string> = {
+  a1: 'A1 Beginner',
+  a2: 'A2 Elementary',
+  b1: 'B1 Intermediate',
+  b2: 'B2 Upper Intermediate',
+  c1: 'C1 Advanced',
+}
+
+function resolveLevel(input: string): string | null {
+  const key = input.toLowerCase()
+  if (LEVEL_MAP[key]) return LEVEL_MAP[key]
+  // Accept full level names too
+  const full = Object.values(LEVEL_MAP).find(v => v.toLowerCase() === key)
+  return full ?? null
+}
+
+async function handleAddStudent(chatId: number, text: string) {
+  // Parse: /addstudent <name> <email> <level>
+  // Email is identified by @; name is everything before it, level after
+  const parts = text.trim().split(/\s+/)
+  parts.shift() // remove /addstudent
+
+  const emailIndex = parts.findIndex(p => p.includes('@'))
+  if (emailIndex === -1) {
+    await sendMessage(chatId,
+      '❌ Could not find an email address.\n\nUsage: /addstudent &lt;name&gt; &lt;email&gt; &lt;level&gt;\nExample: /addstudent Roman roman@example.com B1'
+    )
+    return
+  }
+
+  const name = parts.slice(0, emailIndex).join(' ').trim()
+  const email = parts[emailIndex]
+  const levelInput = parts.slice(emailIndex + 1).join(' ').trim()
+
+  if (!name || !email || !levelInput) {
+    await sendMessage(chatId,
+      '❌ Missing fields.\n\nUsage: /addstudent &lt;name&gt; &lt;email&gt; &lt;level&gt;\nExample: /addstudent Roman roman@example.com B1'
+    )
+    return
+  }
+
+  const level = resolveLevel(levelInput)
+  if (!level) {
+    await sendMessage(chatId,
+      `❌ Unknown level "${levelInput}".\n\nValid levels: A1, A2, B1, B2, C1`
+    )
+    return
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  // Auto-generate a password
+  const password = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-4).toUpperCase()
+
+  const { data: authData, error: authError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name, role: 'student' },
+  })
+
+  if (authError || !authData.user) {
+    await sendMessage(chatId, `❌ Failed to create auth user: ${authError?.message}`)
+    return
+  }
+
+  const { error: dbError } = await admin
+    .from('users')
+    .upsert({ id: authData.user.id, email, name, role: 'student', level })
+
+  if (dbError) {
+    await admin.auth.admin.deleteUser(authData.user.id)
+    await sendMessage(chatId, `❌ DB error: ${dbError.message}`)
+    return
+  }
+
+  await sendMessage(
+    chatId,
+    `✅ Student created!\n\n👤 <b>${name}</b>\n📧 ${email}\n📚 ${level}\n🔑 Password: <code>${password}</code>\n\nShare these credentials with the student.`
+  )
+}
+
 // ─── /deploy ──────────────────────────────────────────────────────────────────
 
 async function handleDeploy(chatId: number) {
@@ -140,8 +230,11 @@ async function handleHelp(chatId: number) {
 Available commands:
 
 /students — List all enrolled students with their level
+/addstudent &lt;name&gt; &lt;email&gt; &lt;level&gt; — Create a new student account
 /deploy — Deploy the latest code to Vercel (production)
-/help — Show this message`
+/help — Show this message
+
+Level codes: A1 · A2 · B1 · B2 · C1`
   )
 }
 
