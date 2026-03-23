@@ -2,13 +2,30 @@
 
 export type UserRole = 'teacher' | 'student'
 
+export type StudentLevel =
+  | 'A1 Beginner'
+  | 'A2 Elementary'
+  | 'B1 Intermediate'
+  | 'B2 Upper Intermediate'
+  | 'C1 Advanced'
+
+export const STUDENT_LEVELS: StudentLevel[] = [
+  'A1 Beginner',
+  'A2 Elementary',
+  'B1 Intermediate',
+  'B2 Upper Intermediate',
+  'C1 Advanced',
+]
+
 export interface User {
   id: string
   email: string
   name: string
   role: UserRole
+  level: StudentLevel | null
   avatar_url: string | null
   created_at: string
+  last_active_at: string | null
 }
 
 // ─── Courses ─────────────────────────────────────────────────────────────────
