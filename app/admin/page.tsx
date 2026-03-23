@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentsSection from '@/components/admin/StudentsSection'
 import HomeworkSection from '@/components/admin/HomeworkSection'
+import LessonsSection from '@/components/admin/LessonsSection'
 import type { StudentRow } from '@/components/admin/AddStudentModal'
 
 export default async function AdminDashboard() {
@@ -40,6 +41,9 @@ export default async function AdminDashboard() {
 
         {/* Homework section */}
         <HomeworkSection />
+
+        {/* Lessons section */}
+        <LessonsSection />
       </div>
     </main>
   )

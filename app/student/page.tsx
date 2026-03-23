@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/auth'
+
 import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentNav from '@/components/student/StudentNav'
 import type { Assignment, Lesson } from '@/types'
@@ -194,7 +195,7 @@ export default async function StudentPortal() {
               {(lessons as any[]).map((lesson, i) => {
                 const course = lesson.unit?.course
                 return (
-                  <div key={lesson.id} className="card hover:shadow-md transition-shadow cursor-pointer group">
+                  <Link key={lesson.id} href={`/student/lessons/${lesson.id}`} className="card hover:shadow-md transition-shadow cursor-pointer group block">
                     <div className="flex items-start gap-3">
                       {/* Number badge */}
                       <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
@@ -211,7 +212,7 @@ export default async function StudentPortal() {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
