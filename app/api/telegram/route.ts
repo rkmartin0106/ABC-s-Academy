@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sendMessage, verifyWebhookSecret } from '@/lib/telegram'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import type { TelegramUpdate } from '@/types'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-
-const execAsync = promisify(exec)
 
 export async function POST(req: NextRequest) {
   // Verify webhook secret
@@ -197,27 +193,29 @@ async function handleAddStudent(chatId: number, text: string) {
 // ─── /deploy ──────────────────────────────────────────────────────────────────
 
 async function handleDeploy(chatId: number) {
-  await sendMessage(chatId, '🚀 Deploying to Vercel...')
+  const hookUrl = process.env.VERCEL_DEPLOY_HOOK_URL
 
-  try {
-    const { stdout, stderr } = await execAsync('npx vercel --prod --yes', {
-      timeout: 120_000,
-    })
-
-    const output = (stdout + stderr).trim()
-    const urlMatch = output.match(/https:\/\/[^\s]+\.vercel\.app[^\s]*/i)
-    const url = urlMatch ? urlMatch[0] : null
-
+  if (!hookUrl) {
     await sendMessage(
       chatId,
-      url
-        ? `✅ Deployed successfully!\n\n${url}`
-        : `✅ Deploy completed.\n\n<code>${output.slice(-300)}</code>`
+      '❌ <b>VERCEL_DEPLOY_HOOK_URL</b> is not set.\n\nTo fix:\n1. Go to Vercel → your project → Settings → Git → Deploy Hooks\n2. Create a hook named "Telegram" on branch <code>main</code>\n3. Copy the URL and add it as <code>VERCEL_DEPLOY_HOOK_URL</code> in your Vercel env vars'
     )
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    await sendMessage(chatId, `❌ Deploy failed:\n\n<code>${message.slice(0, 500)}</code>`)
+    return
   }
+
+  await sendMessage(chatId, '🚀 Triggering production deploy...')
+
+  const res = await fetch(hookUrl, { method: 'POST' })
+
+  if (!res.ok) {
+    await sendMessage(chatId, `❌ Deploy hook failed — HTTP ${res.status}`)
+    return
+  }
+
+  await sendMessage(
+    chatId,
+    `✅ Deploy triggered! Vercel is building now.\n\nTrack progress: https://vercel.com/dashboard`
+  )
 }
 
 // ─── /help ────────────────────────────────────────────────────────────────────
