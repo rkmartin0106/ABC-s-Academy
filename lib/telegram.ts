@@ -1,6 +1,6 @@
 import type { TelegramMessage } from '@/types'
 
-const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`
+const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_PLATFORM_BOT_TOKEN}`
 
 // ─── Send a message to a Telegram chat ───────────────────────────────────────
 
