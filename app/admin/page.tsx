@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentsSection from '@/components/admin/StudentsSection'
+import HomeworkSection from '@/components/admin/HomeworkSection'
 import type { StudentRow } from '@/components/admin/AddStudentModal'
 
 export default async function AdminDashboard() {
@@ -36,6 +37,9 @@ export default async function AdminDashboard() {
 
         {/* Students section */}
         <StudentsSection initialStudents={(students as StudentRow[]) ?? []} />
+
+        {/* Homework section */}
+        <HomeworkSection />
       </div>
     </main>
   )
