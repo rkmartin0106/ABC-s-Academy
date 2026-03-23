@@ -107,7 +107,7 @@ export default function PDFFlipbookPage() {
           >
             {/* Book shadow */}
             <div className="shadow-2xl rounded-lg overflow-hidden">
-              {pdfError ? (
+              {pdfError && resource && (
                 <div className="bg-white w-64 h-96 flex flex-col items-center justify-center gap-3 px-6 text-center">
                   <svg className="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -117,9 +117,10 @@ export default function PDFFlipbookPage() {
                   <a href={resource.file_url} target="_blank" rel="noopener noreferrer"
                     className="text-blue-600 text-xs hover:underline">Open directly →</a>
                 </div>
-              ) : (
+              ) }
+              { !pdfError && resource && (
                 <Document
-                  file={resource.file_url}
+                  file={`/api/pdf-proxy?url=${encodeURIComponent(resource.file_url)}`}
                   onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                   onLoadError={() => setPdfError(true)}
                   loading={
@@ -136,7 +137,7 @@ export default function PDFFlipbookPage() {
                     renderAnnotationLayer
                   />
                 </Document>
-              )}
+              ) }
             </div>
           </div>
         </div>
