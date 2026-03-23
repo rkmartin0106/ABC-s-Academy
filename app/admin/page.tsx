@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentsSection from '@/components/admin/StudentsSection'
 import HomeworkSection from '@/components/admin/HomeworkSection'
 import LessonsSection from '@/components/admin/LessonsSection'
+import LibrarySection from '@/components/admin/LibrarySection'
 import type { StudentRow } from '@/components/admin/AddStudentModal'
 
 export default async function AdminDashboard() {
@@ -44,6 +45,9 @@ export default async function AdminDashboard() {
 
         {/* Lessons section */}
         <LessonsSection />
+
+        {/* PDF Library section */}
+        <LibrarySection />
       </div>
     </main>
   )

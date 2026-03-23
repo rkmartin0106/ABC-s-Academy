@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentNav from '@/components/student/StudentNav'
 import GamificationWidget from '@/components/student/GamificationWidget'
+import LibraryPreview from '@/components/student/LibraryPreview'
 import type { Assignment, Lesson } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -248,6 +249,9 @@ export default async function StudentPortal() {
             </div>
           )}
         </section>
+
+        {/* ── PDF Library ───────────────────────────────────────── */}
+        <LibraryPreview />
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-400 pb-4">
