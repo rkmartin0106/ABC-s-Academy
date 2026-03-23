@@ -171,7 +171,7 @@ export default function HomeworkPage() {
   const [studentAssignment, setStudentAssignment] = useState<StudentAssignment | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{ score: number; correct: number; total: number; breakdown: Record<string, boolean> } | null>(null)
+  const [result, setResult] = useState<{ score: number; correct: number; total: number; breakdown: Record<string, boolean>; xp?: { earnedXp: number; newBadges: string[] } } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -281,6 +281,18 @@ export default function HomeworkPage() {
             <p className="text-xs text-gray-500 mt-1">
               {(studentAssignment?.score ?? 0) >= 70 ? '🎉 Great work!' : '📚 Keep practising!'}
             </p>
+            {result?.xp && (
+              <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-50 border border-yellow-200 rounded-full text-xs font-semibold text-yellow-700">
+                  ✨ +{result.xp.earnedXp} XP earned
+                </span>
+                {result.xp.newBadges.map(b => (
+                  <span key={b} className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200 rounded-full text-xs font-semibold text-purple-700">
+                    🏅 New badge unlocked!
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

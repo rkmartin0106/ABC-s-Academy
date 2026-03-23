@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getSessionUser } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentNav from '@/components/student/StudentNav'
+import GamificationWidget from '@/components/student/GamificationWidget'
 import type { Assignment, Lesson } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -120,6 +121,9 @@ export default async function StudentPortal() {
             </div>
           </div>
         </div>
+
+        {/* ── Gamification ─────────────────────────────────────────── */}
+        <GamificationWidget />
 
         {/* ── Homework ─────────────────────────────────────────────── */}
         <section>

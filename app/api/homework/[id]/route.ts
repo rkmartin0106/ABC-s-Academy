@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { gradeHomework, type StudentAnswers } from '@/lib/grading'
+import { processSubmission } from '@/lib/gamification'
 import type { Question } from '@/types'
 
 // POST /api/homework/[id] — submit answers and auto-grade
@@ -46,5 +47,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
-  return NextResponse.json({ score: result.score, correct: result.correct, total: result.total, breakdown: result.breakdown })
+  // Award XP + badges (non-blocking)
+  const gamification = await processSubmission(user.id, result.score).catch(() => null)
+
+  return NextResponse.json({
+    score: result.score,
+    correct: result.correct,
+    total: result.total,
+    breakdown: result.breakdown,
+    xp: gamification ?? undefined,
+  })
 }
