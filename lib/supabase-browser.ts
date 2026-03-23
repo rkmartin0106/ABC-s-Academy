@@ -1,17 +1,18 @@
 // ─── Browser Client (singleton for Client Components) ────────────────────────
-// Import this only in 'use client' components.
+// Uses @supabase/ssr's createBrowserClient so the session is stored in cookies,
+// which the middleware (also using @supabase/ssr) can read on every request.
+// DO NOT use createClient from @supabase/supabase-js here — it uses localStorage
+// and the middleware will never see the session.
 
-'use client'
+import { createBrowserClient } from '@supabase/ssr'
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+let client: ReturnType<typeof createBrowserClient> | null = null
 
-let browserClient: SupabaseClient | null = null
-
-export function createSupabaseBrowserClient(): SupabaseClient {
-  if (browserClient) return browserClient
-  browserClient = createClient(
+export function createSupabaseBrowserClient() {
+  if (client) return client
+  client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-  return browserClient
+  return client
 }

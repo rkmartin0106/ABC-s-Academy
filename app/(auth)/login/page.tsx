@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import type { UserRole } from '@/types'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -17,25 +15,61 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const supabase = createSupabaseBrowserClient()
+    try {
+      const supabase = createSupabaseBrowserClient()
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (authError || !data.session) {
-      setError(authError?.message ?? 'Login failed. Please try again.')
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+        return
+      }
+
+      if (!data.session) {
+        setError('Sign-in succeeded but no session was returned. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // Role is written into user_metadata by the auth trigger (003_auth_trigger.sql).
+      // Fall back to querying the DB for users created before the trigger was applied.
+      let role = data.session.user.user_metadata?.role as UserRole | undefined
+
+      if (!role) {
+        const { data: userRow, error: dbError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.session.user.id)
+          .single()
+
+        if (dbError) {
+          setError(`Could not load your account role: ${dbError.message}`)
+          setLoading(false)
+          return
+        }
+
+        role = userRow?.role as UserRole | undefined
+      }
+
+      if (!role) {
+        setError('Your account has no role assigned. Please contact your administrator.')
+        setLoading(false)
+        return
+      }
+
+      const destination = role === 'teacher' ? '/admin' : '/student'
+
+      // Full-page navigation so the browser sends the newly set session cookies
+      // to the middleware on the very first request (router.push alone won't do this).
+      window.location.href = destination
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.')
       setLoading(false)
-      return
     }
-
-    // Role is in JWT user_metadata (written by the auth trigger)
-    const role = data.session.user.user_metadata?.role as UserRole | undefined
-    const destination = role === 'teacher' ? '/admin' : '/student'
-
-    router.push(destination)
-    router.refresh()
   }
 
   return (
