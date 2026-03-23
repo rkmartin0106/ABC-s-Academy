@@ -8,15 +8,16 @@ export async function getSessionUser(): Promise<User | null> {
   const supabase = createSupabaseServerClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user: authUser },
+    error,
+  } = await supabase.auth.getUser()
 
-  if (!session) return null
+  if (error || !authUser) return null
 
   const { data: user } = await supabase
     .from('users')
     .select('*')
-    .eq('id', session.user.id)
+    .eq('id', authUser.id)
     .single()
 
   return user as User | null

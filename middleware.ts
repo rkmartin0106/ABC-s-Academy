@@ -38,18 +38,18 @@ export async function middleware(req: NextRequest) {
   })
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // Not authenticated → redirect to login
-  if (!session) {
+  if (!user) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
   // Read role from the JWT user_metadata — no DB query needed at the edge.
   // The auth trigger (003_auth_trigger.sql) sets this on signup, and you can
   // also set it via: supabase.auth.admin.updateUserById(id, { user_metadata: { role } })
-  const role = session.user.user_metadata?.role as 'teacher' | 'student' | undefined
+  const role = user.user_metadata?.role as 'teacher' | 'student' | undefined
 
   // ── Role-based route protection ───────────────────────────────────────────
   if (pathname.startsWith('/admin') && role !== 'teacher') {
