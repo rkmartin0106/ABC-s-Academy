@@ -28,21 +28,27 @@ export async function POST(req: NextRequest) {
   const text = message.text?.trim() ?? ''
   const command = text.split(/\s+/)[0].toLowerCase()
 
-  switch (command) {
-    case '/students':
-      await handleStudents(chatId)
-      break
+  try {
+    switch (command) {
+      case '/students':
+        await handleStudents(chatId)
+        break
 
-    case '/deploy':
-      await handleDeploy(chatId)
-      break
+      case '/deploy':
+        await handleDeploy(chatId)
+        break
 
-    case '/help':
-      await handleHelp(chatId)
-      break
+      case '/help':
+        await handleHelp(chatId)
+        break
 
-    default:
-      await sendMessage(chatId, 'Unknown command. Send /help to see available commands.')
+      default:
+        await sendMessage(chatId, 'Unknown command. Send /help to see available commands.')
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[Telegram webhook] Unhandled error:', msg)
+    await sendMessage(chatId, `❌ Internal error: ${msg}`)
   }
 
   return NextResponse.json({ ok: true })
@@ -51,6 +57,21 @@ export async function POST(req: NextRequest) {
 // ─── /students ────────────────────────────────────────────────────────────────
 
 async function handleStudents(chatId: number) {
+  // Validate required env vars before touching Supabase
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !serviceKey) {
+    const missing = [!url && 'NEXT_PUBLIC_SUPABASE_URL', !serviceKey && 'SUPABASE_SERVICE_ROLE_KEY']
+      .filter(Boolean)
+      .join(', ')
+    console.error('[/students] Missing env vars:', missing)
+    await sendMessage(chatId, `❌ Server misconfiguration — missing env vars: ${missing}`)
+    return
+  }
+
+  console.log('[/students] Querying users table with service role key...')
+
   const admin = createSupabaseAdminClient()
 
   const { data: students, error } = await admin
@@ -60,9 +81,12 @@ async function handleStudents(chatId: number) {
     .order('name')
 
   if (error) {
-    await sendMessage(chatId, `❌ Failed to fetch students: ${error.message}`)
+    console.error('[/students] Supabase error:', error)
+    await sendMessage(chatId, `❌ Supabase error: ${error.message}\nCode: ${error.code}`)
     return
   }
+
+  console.log(`[/students] Query succeeded — ${students?.length ?? 0} students found`)
 
   if (!students || students.length === 0) {
     await sendMessage(chatId, '👩‍🎓 No students enrolled yet.')
