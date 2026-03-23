@@ -38,6 +38,18 @@ export async function POST(req: NextRequest) {
         await handleDeleteStudent(chatId, text)
         break
 
+      case '/progress':
+        await handleProgress(chatId, text)
+        break
+
+      case '/assign':
+        await handleAssign(chatId, text)
+        break
+
+      case '/broadcast':
+        await handleBroadcast(chatId, text)
+        break
+
       case '/deploy':
         await handleDeploy(chatId)
         break
@@ -248,6 +260,208 @@ async function handleDeleteStudent(chatId: number, text: string) {
   await sendMessage(chatId, `✅ Student deleted.\n\n👤 <b>${student.name}</b>\n📧 ${email}`)
 }
 
+// ─── /progress ────────────────────────────────────────────────────────────────
+// Usage: /progress <student name>
+
+async function handleProgress(chatId: number, text: string) {
+  const parts = text.trim().split(/\s+/)
+  parts.shift()
+  const name = parts.join(' ').trim()
+
+  if (!name) {
+    await sendMessage(chatId, '❌ Usage: /progress &lt;student name&gt;\nExample: /progress Roman Martin')
+    return
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  // Find student by name (case-insensitive partial match)
+  const { data: students } = await admin
+    .from('users')
+    .select('id, name, level, xp, streak_days')
+    .eq('role', 'student')
+    .ilike('name', `%${name}%`)
+    .limit(1)
+
+  if (!students || students.length === 0) {
+    await sendMessage(chatId, `❌ No student found matching "${name}"`)
+    return
+  }
+
+  const student = students[0]
+
+  // Fetch recent submissions
+  const { data: submissions } = await admin
+    .from('student_assignments')
+    .select('score, submitted_at, assignment:assignments(title)')
+    .eq('student_id', student.id)
+    .eq('status', 'submitted')
+    .order('submitted_at', { ascending: false })
+    .limit(5)
+
+  const { count: totalAssigned } = await admin
+    .from('student_assignments')
+    .select('id', { count: 'exact', head: true })
+    .eq('student_id', student.id)
+
+  const submitted = submissions?.length ?? 0
+  const avgScore = submitted > 0
+    ? Math.round((submissions ?? []).reduce((s: number, r: any) => s + (r.score ?? 0), 0) / submitted)
+    : null
+
+  const completionPct = totalAssigned ? Math.round((submitted / totalAssigned) * 100) : 0
+
+  const lines = [
+    `📊 <b>${student.name}</b> — Progress Report`,
+    `📚 Level: ${student.level ?? 'Not set'}`,
+    `✨ XP: ${student.xp ?? 0}`,
+    `🔥 Streak: ${student.streak_days ?? 0} days`,
+    `✅ Submitted: ${submitted} / ${totalAssigned ?? 0} (${completionPct}%)`,
+    avgScore !== null ? `📈 Avg Score: ${avgScore}%` : '',
+    '',
+    submitted > 0 ? '<b>Recent submissions:</b>' : 'No submissions yet.',
+    ...(submissions ?? []).map((s: any) => {
+      const date = s.submitted_at ? new Date(s.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '?'
+      return `• ${s.assignment?.title ?? 'Untitled'} — <b>${Math.round(s.score ?? 0)}%</b> (${date})`
+    }),
+  ].filter(Boolean).join('\n')
+
+  await sendMessage(chatId, lines)
+}
+
+// ─── /assign ──────────────────────────────────────────────────────────────────
+// Usage: /assign <student name> | <homework title>
+// Uses | as delimiter to handle multi-word names and titles
+
+async function handleAssign(chatId: number, text: string) {
+  const withoutCmd = text.replace(/^\/assign\s*/i, '')
+  const sep = withoutCmd.indexOf('|')
+
+  if (sep === -1) {
+    await sendMessage(chatId, '❌ Usage: /assign &lt;student name&gt; | &lt;homework title&gt;\nExample: /assign Roman Martin | Unit 3 Quiz')
+    return
+  }
+
+  const studentName = withoutCmd.slice(0, sep).trim()
+  const hwTitle = withoutCmd.slice(sep + 1).trim()
+
+  if (!studentName || !hwTitle) {
+    await sendMessage(chatId, '❌ Both student name and homework title are required.\nExample: /assign Roman Martin | Unit 3 Quiz')
+    return
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  // Find student
+  const { data: students } = await admin
+    .from('users')
+    .select('id, name')
+    .eq('role', 'student')
+    .ilike('name', `%${studentName}%`)
+    .limit(1)
+
+  if (!students || students.length === 0) {
+    await sendMessage(chatId, `❌ No student found matching "${studentName}"`)
+    return
+  }
+
+  // Find assignment
+  const { data: assignments } = await admin
+    .from('assignments')
+    .select('id, title')
+    .ilike('title', `%${hwTitle}%`)
+    .limit(1)
+
+  if (!assignments || assignments.length === 0) {
+    await sendMessage(chatId, `❌ No homework found matching "${hwTitle}"`)
+    return
+  }
+
+  const student = students[0]
+  const assignment = assignments[0]
+
+  // Check if already assigned
+  const { data: existing } = await admin
+    .from('student_assignments')
+    .select('id')
+    .eq('student_id', student.id)
+    .eq('assignment_id', assignment.id)
+    .single()
+
+  if (existing) {
+    await sendMessage(chatId, `⚠️ <b>${student.name}</b> is already assigned "<b>${assignment.title}</b>".`)
+    return
+  }
+
+  // Assign
+  const { error } = await admin
+    .from('student_assignments')
+    .insert({ student_id: student.id, assignment_id: assignment.id, status: 'not_started' })
+
+  if (error) {
+    await sendMessage(chatId, `❌ DB error: ${error.message}`)
+    return
+  }
+
+  await sendMessage(chatId, `✅ Assigned!\n\n👤 <b>${student.name}</b> → 📝 <b>${assignment.title}</b>`)
+}
+
+// ─── /broadcast ───────────────────────────────────────────────────────────────
+// Usage: /broadcast <message>
+// Stores a broadcast message in the messages table for all students to see
+
+async function handleBroadcast(chatId: number, text: string) {
+  const message = text.replace(/^\/broadcast\s*/i, '').trim()
+
+  if (!message) {
+    await sendMessage(chatId, '❌ Usage: /broadcast &lt;message&gt;\nExample: /broadcast Class is cancelled today!')
+    return
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  // Get the teacher user
+  const { data: teachers } = await admin
+    .from('users')
+    .select('id')
+    .eq('role', 'teacher')
+    .limit(1)
+
+  if (!teachers || teachers.length === 0) {
+    await sendMessage(chatId, '❌ No teacher account found in the system.')
+    return
+  }
+
+  const teacherId = teachers[0].id
+
+  // Get all students
+  const { data: students } = await admin
+    .from('users')
+    .select('id')
+    .eq('role', 'student')
+
+  if (!students || students.length === 0) {
+    await sendMessage(chatId, '⚠️ No students enrolled yet — nothing to broadcast to.')
+    return
+  }
+
+  // Insert a message from teacher to each student
+  const rows = students.map((s: any) => ({
+    sender_id: teacherId,
+    receiver_id: s.id,
+    content: `📢 Announcement: ${message}`,
+  }))
+
+  const { error } = await admin.from('messages').insert(rows)
+
+  if (error) {
+    await sendMessage(chatId, `❌ Error broadcasting: ${error.message}`)
+    return
+  }
+
+  await sendMessage(chatId, `✅ Broadcast sent to <b>${students.length}</b> student${students.length !== 1 ? 's' : ''}!\n\n"${message}"`)
+}
+
 // ─── /deploy ──────────────────────────────────────────────────────────────────
 
 async function handleDeploy(chatId: number) {
@@ -283,12 +497,20 @@ async function handleHelp(chatId: number) {
     chatId,
     `🤖 <b>ABC's Academy Bot</b>
 
-Available commands:
+<b>Student management:</b>
+/students — List all enrolled students
+/addstudent &lt;name&gt; &lt;email&gt; &lt;level&gt; — Create student
+/deletestudent &lt;email&gt; — Delete student
 
-/students — List all enrolled students with their level
-/addstudent &lt;name&gt; &lt;email&gt; &lt;level&gt; — Create a new student account
-/deletestudent &lt;email&gt; — Delete a student account
-/deploy — Deploy the latest code to Vercel (production)
+<b>Homework:</b>
+/progress &lt;name&gt; — Recent scores &amp; stats
+/assign &lt;name&gt; | &lt;homework title&gt; — Assign homework
+
+<b>Communication:</b>
+/broadcast &lt;message&gt; — Send to all students
+
+<b>System:</b>
+/deploy — Deploy to Vercel
 /help — Show this message
 
 Level codes: A1 · A2 · B1 · B2 · C1`
