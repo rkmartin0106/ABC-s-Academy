@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  teacher
+  student
+}
+
+enum LessonStatus {
+  draft
+  published
+}
+
+enum AssignmentStatus {
+  not_started
+  in_progress
+  submitted
+}
+
+enum ResourceType {
+  pdf
+  audio
+  video
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  name       String
+  role       UserRole
+  avatar_url String?
+  created_at DateTime @default(now())
+
+  // Relations
+  courses          Course[]
+  student_assignments StudentAssignment[]
+  sent_messages    Message[] @relation("SentMessages")
+  received_messages Message[] @relation("ReceivedMessages")
+  video_sessions   VideoSession[]
+
+  @@map("users")
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  teacher_id  String
+  created_at  DateTime @default(now())
+
+  teacher User   @relation(fields: [teacher_id], references: [id])
+  units   Unit[]
+
+  @@map("courses")
+}
+
+model Unit {
+  id          String @id @default(uuid())
+  course_id   String
+  title       String
+  order_index Int
+
+  course  Course   @relation(fields: [course_id], references: [id])
+  lessons Lesson[]
+
+  @@map("units")
+}
+
+model Lesson {
+  id             String       @id @default(uuid())
+  unit_id        String
+  title          String
+  content_blocks Json         @default("[]")
+  status         LessonStatus @default(draft)
+  created_at     DateTime     @default(now())
+
+  unit        Unit         @relation(fields: [unit_id], references: [id])
+  assignments Assignment[]
+
+  @@map("lessons")
+}
+
+model Assignment {
+  id         String    @id @default(uuid())
+  title      String
+  lesson_id  String?
+  questions  Json      @default("[]")
+  due_date   DateTime?
+  created_at DateTime  @default(now())
+
+  lesson               Lesson?             @relation(fields: [lesson_id], references: [id])
+  student_assignments  StudentAssignment[]
+
+  @@map("assignments")
+}
+
+model StudentAssignment {
+  id            String           @id @default(uuid())
+  student_id    String
+  assignment_id String
+  status        AssignmentStatus @default(not_started)
+  score         Float?
+  answers       Json?
+  submitted_at  DateTime?
+
+  student    User       @relation(fields: [student_id], references: [id])
+  assignment Assignment @relation(fields: [assignment_id], references: [id])
+
+  @@unique([student_id, assignment_id])
+  @@map("student_assignments")
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  sender_id   String
+  receiver_id String
+  content     String
+  read        Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  sender   User @relation("SentMessages", fields: [sender_id], references: [id])
+  receiver User @relation("ReceivedMessages", fields: [receiver_id], references: [id])
+
+  @@map("messages")
+}
+
+model Resource {
+  id         String       @id @default(uuid())
+  title      String
+  type       ResourceType
+  file_url   String
+  created_at DateTime     @default(now())
+
+  @@map("resources")
+}
+
+model VideoSession {
+  id           String   @id @default(uuid())
+  teacher_id   String
+  title        String
+  scheduled_at DateTime
+  room_url     String
+  created_at   DateTime @default(now())
+
+  teacher User @relation(fields: [teacher_id], references: [id])
+
+  @@map("video_sessions")
+}

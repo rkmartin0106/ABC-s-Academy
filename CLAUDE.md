@@ -15,3 +15,5 @@ Reply format: "Done! See it live here: [URL]"
 - Always send the preview URL after every deploy
 - Keep changes clean and mobile-friendly
 - Use Google Fonts linked in the HTML head
+## Vercel URL
+https://abc-s-academy.vercel.app/
