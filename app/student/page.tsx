@@ -1,7 +1,11 @@
-import { requireRole } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/lib/auth'
 
 export default async function StudentDashboard() {
-  const user = await requireRole('student')
+  const user = await getSessionUser()
+
+  if (!user) redirect('/login')
+  if (user.role !== 'student') redirect('/admin')
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -12,7 +16,6 @@ export default async function StudentDashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* Placeholder cards — replace with real content */}
           <StatCard label="Lessons Completed" value="—" />
           <StatCard label="Assignments Due" value="—" />
         </div>
