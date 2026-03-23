@@ -11,27 +11,31 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // Guard: if env vars aren't set yet (e.g. during Vercel cold start before
+  // variables are configured), fail open to /login rather than crashing.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
+
   const res = NextResponse.next()
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          req.cookies.set({ name, value, ...options })
-          res.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          req.cookies.set({ name, value: '', ...options })
-          res.cookies.set({ name, value: '', ...options })
-        },
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name: string) {
+        return req.cookies.get(name)?.value
       },
-    }
-  )
+      set(name: string, value: string, options: CookieOptions) {
+        req.cookies.set({ name, value, ...options })
+        res.cookies.set({ name, value, ...options })
+      },
+      remove(name: string, options: CookieOptions) {
+        req.cookies.set({ name, value: '', ...options })
+        res.cookies.set({ name, value: '', ...options })
+      },
+    },
+  })
 
   const {
     data: { session },
@@ -42,14 +46,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // Fetch role from the users table
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', session.user.id)
-    .single()
-
-  const role = userRow?.role as 'teacher' | 'student' | undefined
+  // Read role from the JWT user_metadata — no DB query needed at the edge.
+  // The auth trigger (003_auth_trigger.sql) sets this on signup, and you can
+  // also set it via: supabase.auth.admin.updateUserById(id, { user_metadata: { role } })
+  const role = session.user.user_metadata?.role as 'teacher' | 'student' | undefined
 
   // ── Role-based route protection ───────────────────────────────────────────
   if (pathname.startsWith('/admin') && role !== 'teacher') {
@@ -64,6 +64,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Run on all routes except Next.js internals and static assets
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
