@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import AddStudentModal, { type StudentRow } from './AddStudentModal'
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -100,19 +101,19 @@ export default function StudentsSection({ initialStudents }: Props) {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {students.map(student => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition">
+                  <tr key={student.id} className="hover:bg-gray-50 transition cursor-pointer">
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
+                      <Link href={`/admin/students/${student.id}`} className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                           <span className="text-xs font-semibold text-blue-700">
                             {getInitials(student.name)}
                           </span>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{student.name}</p>
+                          <p className="font-medium text-gray-900 hover:text-blue-700 transition-colors">{student.name}</p>
                           <p className="text-xs text-gray-400">{student.email}</p>
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-5 py-3.5">
                       {student.level ? (
