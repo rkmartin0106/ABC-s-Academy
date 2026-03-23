@@ -67,14 +67,20 @@ export interface Lesson {
 
 // ─── Assignments ─────────────────────────────────────────────────────────────
 
-export type QuestionType = 'multiple_choice' | 'short_answer' | 'fill_in_blank'
+export type QuestionType = 'multiple_choice' | 'fill_in_blank' | 'true_false' | 'matching'
+
+export interface MatchingPair {
+  left: string
+  right: string
+}
 
 export interface Question {
   id: string
   type: QuestionType
   prompt: string
-  options?: string[]
-  correct_answer: string | number
+  options?: string[]       // multiple_choice choices
+  pairs?: MatchingPair[]   // matching pairs (right side will be shuffled for student)
+  correct_answer: string   // mc/t-f: option value; fill: expected text; matching: JSON of {left:right} map
 }
 
 export interface Assignment {

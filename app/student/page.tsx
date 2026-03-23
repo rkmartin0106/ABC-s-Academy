@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getSessionUser } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentNav from '@/components/student/StudentNav'
-import type { Assignment, StudentAssignment, Lesson } from '@/types'
+import type { Assignment, Lesson } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ export default async function StudentPortal() {
                   : 0
 
                 return (
-                  <div key={item.id} className="card flex items-start gap-4 hover:shadow-md transition-shadow">
+                  <Link key={item.id} href={`/student/homework/${item.assignment?.id}`} className="card flex items-start gap-4 hover:shadow-md transition-shadow block">
                     {/* Icon */}
                     <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
                       <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -162,7 +163,7 @@ export default async function StudentPortal() {
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
