@@ -7,6 +7,7 @@ import LessonsSection from '@/components/admin/LessonsSection'
 import LibrarySection from '@/components/admin/LibrarySection'
 import VideoSessionsSection from '@/components/admin/VideoSessionsSection'
 import AnalyticsSection from '@/components/admin/AnalyticsSection'
+import MessagingInbox from '@/components/admin/MessagingInbox'
 import type { StudentRow } from '@/components/admin/AddStudentModal'
 
 export default async function AdminDashboard() {
@@ -53,6 +54,9 @@ export default async function AdminDashboard() {
 
         {/* Video sessions */}
         <VideoSessionsSection />
+
+        {/* Messaging */}
+        <MessagingInbox />
 
         {/* Analytics */}
         <AnalyticsSection />

@@ -6,6 +6,7 @@ import StudentNav from '@/components/student/StudentNav'
 import GamificationWidget from '@/components/student/GamificationWidget'
 import LibraryPreview from '@/components/student/LibraryPreview'
 import VideoClassWidget from '@/components/student/VideoClassWidget'
+import MessageComposer from '@/components/student/MessageComposer'
 import type { Assignment, Lesson } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -256,6 +257,9 @@ export default async function StudentPortal() {
 
         {/* ── PDF Library ───────────────────────────────────────── */}
         <LibraryPreview />
+
+        {/* ── Message Teacher ──────────────────────────────────── */}
+        <MessageComposer />
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-400 pb-4">
