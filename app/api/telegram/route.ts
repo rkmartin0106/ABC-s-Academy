@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
         await handleAddStudent(chatId, text)
         break
 
+      case '/deletestudent':
+        await handleDeleteStudent(chatId, text)
+        break
+
       case '/deploy':
         await handleDeploy(chatId)
         break
@@ -190,6 +194,60 @@ async function handleAddStudent(chatId: number, text: string) {
   )
 }
 
+// ─── /deletestudent ──────────────────────────────────────────────────────────
+// Usage: /deletestudent <email>
+
+async function handleDeleteStudent(chatId: number, text: string) {
+  const parts = text.trim().split(/\s+/)
+  const email = parts[1]?.toLowerCase()
+
+  if (!email || !email.includes('@')) {
+    await sendMessage(chatId,
+      '❌ Please provide the student\'s email.\n\nUsage: /deletestudent &lt;email&gt;\nExample: /deletestudent roman@example.com'
+    )
+    return
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  // Look up the student by email
+  const { data: student, error: lookupError } = await admin
+    .from('users')
+    .select('id, name, role')
+    .eq('email', email)
+    .single()
+
+  if (lookupError || !student) {
+    await sendMessage(chatId, `❌ No student found with email: ${email}`)
+    return
+  }
+
+  if (student.role !== 'student') {
+    await sendMessage(chatId, `❌ That account is not a student (role: ${student.role}). Aborting.`)
+    return
+  }
+
+  // Delete from public.users first, then auth
+  const { error: dbError } = await admin
+    .from('users')
+    .delete()
+    .eq('id', student.id)
+
+  if (dbError) {
+    await sendMessage(chatId, `❌ DB error: ${dbError.message}`)
+    return
+  }
+
+  const { error: authError } = await admin.auth.admin.deleteUser(student.id)
+
+  if (authError) {
+    await sendMessage(chatId, `⚠️ Removed from DB but failed to delete auth user: ${authError.message}`)
+    return
+  }
+
+  await sendMessage(chatId, `✅ Student deleted.\n\n👤 <b>${student.name}</b>\n📧 ${email}`)
+}
+
 // ─── /deploy ──────────────────────────────────────────────────────────────────
 
 async function handleDeploy(chatId: number) {
@@ -229,6 +287,7 @@ Available commands:
 
 /students — List all enrolled students with their level
 /addstudent &lt;name&gt; &lt;email&gt; &lt;level&gt; — Create a new student account
+/deletestudent &lt;email&gt; — Delete a student account
 /deploy — Deploy the latest code to Vercel (production)
 /help — Show this message
 
