@@ -5,6 +5,7 @@ import StudentsSection from '@/components/admin/StudentsSection'
 import HomeworkSection from '@/components/admin/HomeworkSection'
 import LessonsSection from '@/components/admin/LessonsSection'
 import LibrarySection from '@/components/admin/LibrarySection'
+import VideoSessionsSection from '@/components/admin/VideoSessionsSection'
 import type { StudentRow } from '@/components/admin/AddStudentModal'
 
 export default async function AdminDashboard() {
@@ -48,6 +49,9 @@ export default async function AdminDashboard() {
 
         {/* PDF Library section */}
         <LibrarySection />
+
+        {/* Video sessions */}
+        <VideoSessionsSection />
       </div>
     </main>
   )

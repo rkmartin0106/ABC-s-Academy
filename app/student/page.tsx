@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase'
 import StudentNav from '@/components/student/StudentNav'
 import GamificationWidget from '@/components/student/GamificationWidget'
 import LibraryPreview from '@/components/student/LibraryPreview'
+import VideoClassWidget from '@/components/student/VideoClassWidget'
 import type { Assignment, Lesson } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -249,6 +250,9 @@ export default async function StudentPortal() {
             </div>
           )}
         </section>
+
+        {/* ── Video Classes ────────────────────────────────────────── */}
+        <VideoClassWidget />
 
         {/* ── PDF Library ───────────────────────────────────────── */}
         <LibraryPreview />
